@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch .NET API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "dotnet: build",
+      "program": "${workspaceFolder}/api/bin/Debug/net8.0/api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  ]
+}
