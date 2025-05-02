@@ -1,5 +1,14 @@
 {
   "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Launch API and SPA",
+      "configurations": [
+        "Launch .NET API",
+        "Launch React SPA"
+      ]
+    }
+  ],
   "configurations": [
     {
       "name": "Launch .NET API",
@@ -13,6 +22,21 @@
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    },
+    {
+      "name": "Launch React SPA",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}/spa",
+      "env": {
+        "BROWSER": "none"
+      },
+      "console": "integratedTerminal"
     }
   ]
 }
