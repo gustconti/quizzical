@@ -1,26 +1,25 @@
+using api.Data;
 using api.Hubs;
-using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Explicitly configure URLs here to ensure it's listening on the correct port
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    // Ensure port is set correctly; this should match your desired port in launch.json or launchSettings.json
-    serverOptions.ListenLocalhost(5000); // Use port 5000 for HTTP
+    serverOptions.ListenLocalhost(5000); // HTTP port
 });
 
 // Add services to the container.
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
-
-// Add Swagger services
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddIdentityApiEndpoints<IdentityUser>()
+    .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// Add SignalR services.
 builder.Services.AddSignalR();
-
-// Add CORS policy to allow your frontend to connect
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -31,27 +30,19 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod();
         });
 });
+builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
+    .AddBearerToken();
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline
 app.UseHttpsRedirection();
-
-// Enable Swagger for API documentation
+app.MapIdentityApi<IdentityUser>();
+app.MapControllers();
+app.MapHub<QuizHub>("/quizHub");
+app.UseCors("AllowReactApp");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-// Enable CORS for frontend communication
-app.UseCors("AllowReactApp");
-
-// Map controllers
-app.MapControllers();
-
-// Map SignalR Hub
-app.MapHub<QuizHub>("/quizHub");
-
 
 app.Run();
