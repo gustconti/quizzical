@@ -8,8 +8,12 @@
     "editor.tabSize": 4,
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
+    "files.associations": {
+        "*.css": "tailwindcss",
+        "*.scss": "tailwindcss"
+    },
     "editor.quickSuggestions": {
         "strings": true
     },
-    "tailwindCSS.experimental.configFile": "./spa/src/index.css",
+    "tailwindCSS.experimental.configFile": "src/index.css",
 }

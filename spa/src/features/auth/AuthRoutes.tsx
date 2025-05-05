@@ -1,10 +1,9 @@
-import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import Login from './components/Login';
 import Register from './components/Register';
 import ForgotPassword from './components/ForgotPassword';
 
-const AuthRoutes: React.FC = () => {
+export default function AuthRoutes() {
     return (
         <Routes>
             <Route path="/auth/login" element={<Login />} />
@@ -13,5 +12,3 @@ const AuthRoutes: React.FC = () => {
         </Routes>
     );
 };
-
-export default AuthRoutes;

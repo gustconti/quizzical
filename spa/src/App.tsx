@@ -6,11 +6,12 @@ import Login from './features/auth/components/Login';
 import Register from './features/auth/components/Register';
 import UserProfile from './features/auth/components/UserProfile';
 import PrivateRoute from './features/auth/components/PrivateRoute';
+import ForgotPassword from './features/auth/components/ForgotPassword';
 
-function App() {
+export default function App() {
     return (
     <>
-      <nav className="p-4 space-x-4 bg-gray-200 d-flex gap-3">
+      <nav className="w-full bg-black">
         <Link to="/">Home</Link>
         <Link to="/animation-test">Animation Test</Link>
         <Link to="/signalr-test">SignalR Test</Link>
@@ -20,6 +21,7 @@ function App() {
         <Route path="/signalr-test" element={<QuizRoom />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/signalr-test" element={<QuizRoom />} />
         <Route element={<PrivateRoute />}>
             <Route path='/profile' element={<UserProfile />} />
@@ -28,5 +30,3 @@ function App() {
     </>
   )
 }
-
-export default App
