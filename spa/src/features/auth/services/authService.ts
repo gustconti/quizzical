@@ -1,6 +1,4 @@
 import api from '@/app/api';
-// import api from '../../../app/api';
-
 
 export const login = (credentials: { email: string; password: string }) =>
   api.post('/login', credentials);

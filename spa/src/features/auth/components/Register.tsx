@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const RegisterForm: React.FC = () => {
+export default function Register() {
     const [formData, setFormData] = useState({
         username: "",
         email: "",
@@ -90,5 +90,3 @@ const RegisterForm: React.FC = () => {
         </form>
     );
 };
-
-export default RegisterForm;
