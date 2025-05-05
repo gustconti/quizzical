@@ -5,11 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.ConfigureKestrel(serverOptions =>
-{
-    serverOptions.ListenLocalhost(5000); // HTTP port
-});
-
 // Add services to the container.
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
@@ -20,6 +15,9 @@ builder.Services.AddIdentityApiEndpoints<IdentityUser>()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
+builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
+    .AddBearerToken();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -30,19 +28,23 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod();
         });
 });
-builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
-    .AddBearerToken();
 
 var app = builder.Build();
+
+// Middleware
 app.UseHttpsRedirection();
-app.MapIdentityApi<IdentityUser>();
-app.MapControllers();
-app.MapHub<QuizHub>("/quizHub");
 app.UseCors("AllowReactApp");
+app.UseAuthentication();
+app.UseAuthorization();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Endpoints
+// app.MapIdentityApi<IdentityUser>();
+app.MapControllers();
+app.MapHub<QuizHub>("/quizHub");
 
 app.Run();
