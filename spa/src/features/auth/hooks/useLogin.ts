@@ -18,7 +18,7 @@ export function useLogin() {
         e.preventDefault();
         try {
             const resultAction = await dispatch(login({ email, password }));
-
+            console.log('GC: ', resultAction);
             if (login.fulfilled.match(resultAction)) {
                 completeLogin(resultAction.payload, dispatch, navigate);
             } else {
@@ -40,6 +40,5 @@ export function useLogin() {
         isLoading,
         error,
         handleSubmit,
-        completeLogin,
     };
 }

@@ -1,16 +1,22 @@
+using api.Dtos.Auth;
 using api.Models.Auth;
+using api.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers
 {
-    public class AuthController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager) : ControllerBase
+    public class AuthController(
+        UserManager<IdentityUser> userManager,
+        AuthService authService
+    ) : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager = userManager;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly AuthService _authService = authService;
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        public async Task<IActionResult> Register([FromBody] RegisterPayload model)
         {
             var user = new IdentityUser { UserName = model.Email, Email = model.Email };
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -22,22 +28,33 @@ namespace api.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        public async Task<IActionResult> Login([FromBody] LoginPayload model)
         {
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
-            if (result.Succeeded)
+            try
             {
-                return Ok(new { Message = "User logged in successfully" });
+                var authResponse = await _authService.LoginAsync(model);
+                return Ok(authResponse);
             }
-            return BadRequest(new { Message = "Invalid login attempt" });
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { ex.Message });
+            }
         }
 
-        // [HttpPost("refresh")]
-        // public async Task<IActionResult> Refresh([FromBody] RefreshTokenModel model)
-        // {
-        //     // Logic to refresh token
-        //     return Ok(new { Message = "Token refreshed successfully" });
-        // }
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenPayload model)
+        {
+            try
+            {
+                // var refreshResponse = await _authService.RefreshTokenAsync(model);
+                // return Ok(refreshResponse);
+                return Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new{ex.Message});
+            }
+        }
 
         [HttpGet("confirmEmail")]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
@@ -56,7 +73,7 @@ namespace api.Controllers
         }
 
         [HttpPost("resendConfirmationEmail")]
-        public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationModel model)
+        public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user is null)
@@ -69,7 +86,7 @@ namespace api.Controllers
         }
 
         [HttpPost("forgotPassword")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordModel model)
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user is null)
@@ -82,7 +99,7 @@ namespace api.Controllers
         }
 
         [HttpPost("resetPassword")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user is null)
@@ -98,7 +115,7 @@ namespace api.Controllers
         }
 
         [HttpPost("changePassword")]
-        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordModel model)
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user is null)

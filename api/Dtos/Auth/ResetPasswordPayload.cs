@@ -1,6 +1,6 @@
-namespace api.Models.Auth
+namespace api.Dtos.Auth
 {
-    public class ResetPasswordModel
+    public class ResetPasswordPayload
     {
         public required string Email { get; set; }
         public required string Token { get; set; }

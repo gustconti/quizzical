@@ -1,9 +1,9 @@
-namespace api.Models.Auth
+namespace api.Dtos.Auth
 {
-    public class LoginModel
+    public class LoginPayload
     {
         public required string Email { get; set; }
         public required string Password { get; set; }
-        public bool RememberMe { get; internal set; }
+        public bool RememberMe { get; internal set; } = true;
     }
 }

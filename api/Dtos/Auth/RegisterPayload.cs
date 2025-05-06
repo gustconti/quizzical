@@ -1,6 +1,6 @@
-namespace api.Models.Auth
+namespace api.Dtos.Auth
 {
-    public class RegisterModel
+    public class RegisterPayload
     {
         public required string Username { get; set; }
         public required string Password { get; set; }

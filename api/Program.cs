@@ -1,7 +1,11 @@
 using api.Data;
+using api.Entities.Auth;
+using api.Repositories;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
+using System.Text;
 using api.Hubs;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,23 +14,49 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddIdentityApiEndpoints<IdentityUser>()
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// JWT Bearer Authentication Setup
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = IdentityConstants.BearerScheme;
+    options.DefaultChallengeScheme = IdentityConstants.BearerScheme;
+})
+.AddJwtBearer(options =>
+{
+    var jwtKey = builder.Configuration["Jwt:Key"];
+    
+    if (string.IsNullOrEmpty(jwtKey))
+    {
+        throw new InvalidOperationException("JWT key is not configured. Please set the Jwt:Key in appsettings.json or environment variables.");
+    }
+
+    options.Authority = builder.Configuration["Jwt:Issuer"];
+    options.Audience = builder.Configuration["Jwt:Audience"];
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+});
+
+// Repositories
+builder.Services.AddScoped<TokenRepository>();
+
+// Swagger & SignalR setup
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
-builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
-    .AddBearerToken();
-
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:5173")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 
 var app = builder.Build();
@@ -36,7 +66,7 @@ app.UseHttpsRedirection();
 
 app.UseRouting();
 app.UseCors("AllowReactApp");
-app.UseAuthentication();
+app.UseAuthentication();  // Use JWT Bearer Authentication
 app.UseAuthorization();
 
 // Endpoints

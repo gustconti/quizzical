@@ -5,6 +5,7 @@ import type { LoginModel } from '@/features/auth/types/LoginModel';
 import { AuthResponse } from '../types/AuthResponse';
 import { AuthState } from '../types/AuthState';
 import { RegisterModel } from '../types/RegisterModel';
+import { removeToken } from '../utils/token';
 
 // `createAsyncThunk` is used to define asynchronous actions.
 // `login` thunk handles the login process by calling the `authService.login` API.
@@ -43,6 +44,7 @@ const initialState: AuthState = {
     expiresAt: 0, // Token expiration timestamp is 0 initially
     isLoading: false,
     error: '',
+    guestName: 'GUEST',
 };
 
 // `createSlice` is used to define a Redux slice, which includes the state, reducers, and extra reducers.
@@ -52,20 +54,16 @@ const authSlice = createSlice({
     reducers: {
         // Reducer for logging out the user
         logout: (state) => {
+            console.log('GC: LOGOUT! state: ', state)
             state.token = null; // Clear the access token
             state.user = null; // Clear the user data
             state.expiresAt = 0; // Reset the expiration timestamp
+            removeToken();
         },
         // Reducer storing the user
         setUser: (state, action: PayloadAction<{ token: string; user: User }>) => {
             state.token = action.payload.token;
             state.user = action.payload.user;
-        },
-        // Reducer to clear the authentication state
-        clearAuthState: (state) => {
-            state.token = null;
-            state.user = null;
-            state.expiresAt = 0;
         },
     },
     extraReducers: (builder) => {
@@ -78,9 +76,11 @@ const authSlice = createSlice({
                 state.token = action.payload.token; // Set the access token
                 state.user = action.payload.user; // Set the user data
                 state.expiresAt = Date.now() + action.payload.expiresIn * 1000; // Calculate and set the token expiration timestamp
+                state.isLoading = false;
             })
             .addCase(login.rejected, (state, action) => {
                 state.error = action.error.message;
+                state.isLoading = false;
             })
             // Handle fulfilled state of the `refresh` thunk
             .addCase(refresh.fulfilled, (state, action) => {
@@ -91,7 +91,7 @@ const authSlice = createSlice({
 });
 
 // Export the `logout` action for use in components
-export const { logout, setUser, clearAuthState } = authSlice.actions;
+export const { logout, setUser } = authSlice.actions;
 
 // Export the reducer to be included in the Redux store
 export default authSlice.reducer;

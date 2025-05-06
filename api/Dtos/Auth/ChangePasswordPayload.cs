@@ -1,6 +1,6 @@
-namespace api.Models.Auth
+namespace api.Dtos.Auth
 {
-    public class ChangePasswordModel
+    public class ChangePasswordPayload
     {
         public required string Email { get; set; }
         public required string CurrentPassword { get; set; }
