@@ -1,49 +1,42 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { refresh, setUser, clearAuthState } from '../authSlice';
+import { refresh, setUser } from '../store/authSlice';
 import type { RootState, AppDispatch } from '@/app/store';
+import { getToken, getUser } from '../utils/token';
 
 export default function useAuth() {
   const dispatch = useDispatch<AppDispatch>();
   const { expiresAt, token, user } = useSelector((state: RootState) => state.auth);
 
-  // Check local storage for token on mount
+  // Check local storage for token and user info on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem('auth_token');
-    const savedUser = localStorage.getItem('auth_user');
+    const savedToken = getToken();
+    const savedUser = getUser();
 
-    if (savedToken && savedUser)
-      dispatch(setUser({ token: savedToken, user: JSON.parse(savedUser) })); // Set user from local storage
+    if (savedToken && savedUser) {
+      dispatch(setUser({ token: savedToken, user: JSON.parse(savedUser) }));
+    }
   }, [dispatch]);
 
-  // Token refresh interval
+  // Handle token refresh
   useEffect(() => {
-    if (!token) return;
+    if (!token) return; // If no token, do not refresh
+
     const now = Date.now();
     const timeLeft = expiresAt - now;
-    const timeToRepeatRefresh = 5 * 60 * 1000; // 5 minutes
-    const minTimeToRefresh = 60 * 1000; // 1 minute
+    const timeToRepeatRefresh = 5 * 60 * 1000; // Refresh every 5 minutes
+    const minTimeToRefresh = 60 * 1000; // Minimum 1 minute before expiry
 
     if (timeLeft < minTimeToRefresh) {
-      dispatch(refresh());
+      dispatch(refresh()); // Refresh token if near expiry
     }
 
-    const timer = setInterval(
-      () => {
-        dispatch(refresh());
-      },
-      timeToRepeatRefresh, // Refresh token every 5 minutes
-    );
+    const timer = setInterval(() => {
+      dispatch(refresh()); // Refresh token periodically
+    }, timeToRepeatRefresh);
 
-    return () => clearInterval(timer);
-  }, [dispatch, expiresAt, token]); // Run effect when expiresAt changes
+    return () => clearInterval(timer); // Clean up interval on unmount
+  }, [dispatch, expiresAt, token]);
 
-  // Logout function (clears localStorage + Redux state)
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    dispatch(clearAuthState());
-  };
-
-  return { token, user, logout };
+  return { token, user }; // Provide current auth state
 }

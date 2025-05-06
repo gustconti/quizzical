@@ -23,7 +23,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173") // Update with your frontend URL
+            policy.WithOrigins("http://localhost:5173")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -33,18 +33,26 @@ var app = builder.Build();
 
 // Middleware
 app.UseHttpsRedirection();
+
+app.UseRouting();
 app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Endpoints
+app.MapControllers();
+app.MapHub<QuizHub>("/quizHub");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Endpoints
-// app.MapIdentityApi<IdentityUser>();
-app.MapControllers();
-app.MapHub<QuizHub>("/quizHub");
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"Request: {context.Request.Method} {context.Request.Path}");
+    await next();
+});
 
 app.Run();

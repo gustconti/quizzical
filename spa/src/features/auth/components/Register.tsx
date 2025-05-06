@@ -1,92 +1,45 @@
-import React, { useState } from "react";
+import { useRegister } from '../hooks/useRegister';
 
 export default function Register() {
-    const [formData, setFormData] = useState({
-        username: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-    });
+    const { formData, handleChange, handleSubmit } = useRegister();
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Handle form submission logic here
-        console.log(formData);
-    };
+    const fields = [
+        { name: 'username', label: 'Username', type: 'text' },
+        { name: 'email', label: 'Email', type: 'email' },
+        { name: 'password', label: 'Password', type: 'password' },
+        { name: 'confirmPassword', label: 'Confirm Password', type: 'password' },
+    ] as const;
 
     return (
         <form
             onSubmit={handleSubmit}
-            className="max-w-md mx-auto p-6 bg-white shadow-md rounded-md"
+            className="max-w-md mx-auto p-6 shadow-md rounded-md bg-gray-900"
         >
-            <h2 className="text-2xl font-bold mb-4 text-center">Register</h2>
-            <div className="mb-4">
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                    Username
-                </label>
-                <input
-                    type="text"
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    required
-                />
-            </div>
-            <div className="mb-4">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email
-                </label>
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    required
-                />
-            </div>
-            <div className="mb-4">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                </label>
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    required
-                />
-            </div>
-            <div className="mb-4">
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                    Confirm Password
-                </label>
-                <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    required
-                />
-            </div>
+            <h2 className="text-2xl font-bold mb-4 text-center text-amber-300">Register</h2>
+
+            {fields.map(({ name, label, type }) => (
+                <div className="mb-4" key={name}>
+                    <label htmlFor={name} className="block text-sm font-medium text-amber-200">
+                        {label}
+                    </label>
+                    <input
+                        type={type}
+                        id={name}
+                        name={name}
+                        value={formData[name]}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-800 text-white rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                        required
+                    />
+                </div>
+            ))}
+
             <button
                 type="submit"
-                className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="w-full bg-orange-500 text-white py-2 px-4 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
                 Register
             </button>
         </form>
     );
-};
+}
