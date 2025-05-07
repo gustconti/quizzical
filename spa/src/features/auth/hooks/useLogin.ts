@@ -17,7 +17,7 @@ export function useLogin() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const resultAction = await dispatch(login({ email, password }));
+            const resultAction = await dispatch(login({ email, password, remeberMe: false }));
             console.log('GC: ', resultAction);
             if (login.fulfilled.match(resultAction)) {
                 completeLogin(resultAction.payload, dispatch, navigate);

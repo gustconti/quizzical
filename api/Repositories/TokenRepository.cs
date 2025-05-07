@@ -1,10 +1,11 @@
 using api.Data;
 using api.Entities.Auth;
+using api.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Repositories
 {
-    public class TokenRepository(ApplicationDbContext context)
+    public class TokenRepository(ApplicationDbContext context) : ITokenRepository
     {
         private readonly ApplicationDbContext _context = context;
 
@@ -24,9 +25,9 @@ namespace api.Repositories
         public async Task RevokeTokenAsync(string token)
         {
             var existing = await GetTokenAsync(token);
-            if (existing != null)
+            if (existing is not null)
             {
-                existing.IsRevoked = true;
+                existing.RevokedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
         }
@@ -34,9 +35,9 @@ namespace api.Repositories
         public async Task UseTokenAsync(string token)
         {
             var existing = await GetTokenAsync(token);
-            if (existing != null)
+            if (existing is not null)
             {
-                existing.IsUsed = true;
+                existing.UsedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
         }

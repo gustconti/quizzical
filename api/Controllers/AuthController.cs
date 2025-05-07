@@ -1,24 +1,23 @@
 using api.Dtos.Auth;
-using api.Models.Auth;
+using api.Entities.Auth;
 using api.Services;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers
 {
     public class AuthController(
-        UserManager<IdentityUser> userManager,
+        UserManager<ApplicationUser> userManager,
         AuthService authService
     ) : ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly AuthService _authService = authService;
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterPayload model)
         {
-            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
+            var user = new ApplicationUser{ UserName = model.Email, Email = model.Email };
             var result = await _userManager.CreateAsync(user, model.Password);
             if (result.Succeeded)
             {
@@ -46,17 +45,16 @@ namespace api.Controllers
         {
             try
             {
-                // var refreshResponse = await _authService.RefreshTokenAsync(model);
-                // return Ok(refreshResponse);
-                return Ok();
+                RefreshResponse refreshResponse = await _authService.RefreshTokenAsync(model);
+                return Ok(refreshResponse);
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new{ex.Message});
+                return BadRequest(new { ex.Message });
             }
         }
 
-        [HttpGet("confirmEmail")]
+        [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
         {
             var user = await _userManager.FindByIdAsync(userId);
@@ -72,7 +70,7 @@ namespace api.Controllers
             return BadRequest(result.Errors);
         }
 
-        [HttpPost("resendConfirmationEmail")]
+        [HttpPost("resend-confirmation-email")]
         public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -85,7 +83,7 @@ namespace api.Controllers
             return Ok(new { Message = "Confirmation email resent successfully" });
         }
 
-        [HttpPost("forgotPassword")]
+        [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -98,7 +96,7 @@ namespace api.Controllers
             return Ok(new { Message = "Password reset email sent successfully" });
         }
 
-        [HttpPost("resetPassword")]
+        [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -114,7 +112,7 @@ namespace api.Controllers
             return BadRequest(result.Errors);
         }
 
-        [HttpPost("changePassword")]
+        [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);

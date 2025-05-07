@@ -1,21 +1,17 @@
 using api.Data;
-using api.Entities.Auth;
 using api.Repositories;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using api.Hubs;
 using Microsoft.AspNetCore.Identity;
+using api.Entities.Auth;
+using api.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add Authorization and Authentication services
 builder.Services.AddAuthorization();
-builder.Services.AddControllers();
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// JWT Bearer Authentication Setup
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = IdentityConstants.BearerScheme;
@@ -24,7 +20,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     var jwtKey = builder.Configuration["Jwt:Key"];
-    
+
     if (string.IsNullOrEmpty(jwtKey))
     {
         throw new InvalidOperationException("JWT key is not configured. Please set the Jwt:Key in appsettings.json or environment variables.");
@@ -42,13 +38,21 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Repositories
-builder.Services.AddScoped<TokenRepository>();
+// Connect to DB
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Swagger & SignalR setup
+// Identity services
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR();
+
+// Cors Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -59,8 +63,20 @@ builder.Services.AddCors(options =>
     });
 });
 
-var app = builder.Build();
+// SignalR
+builder.Services.AddSignalR();
 
+// Options
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<RefreshTokenOptions>(builder.Configuration.GetSection("RefreshToken"));
+
+// Controllers
+builder.Services.AddControllers();
+
+// Repositories
+builder.Services.AddScoped<TokenRepository>();
+
+var app = builder.Build();
 // Middleware
 app.UseHttpsRedirection();
 

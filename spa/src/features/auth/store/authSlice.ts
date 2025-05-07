@@ -6,42 +6,35 @@ import { AuthResponse } from '../types/AuthResponse';
 import { AuthState } from '../types/AuthState';
 import { RegisterModel } from '../types/RegisterModel';
 import { removeToken } from '../utils/token';
+import { RefreshTokenModel } from '../types/RefreshTokenModel';
 
-// `createAsyncThunk` is used to define asynchronous actions.
-// `login` thunk handles the login process by calling the `authService.login` API.
 export const login = createAsyncThunk<AuthResponse, LoginModel>(
     'auth/login', // Action type prefix
     async (credentials: LoginModel) => {
         const { data } = await authService.login(credentials); // Call the login service
-        return data; // Return the response data as the payload
+        return data;
     },
 );
 
-// `createAsyncThunk` is used to define asynchronous actions.
-// `register` thunk handles the register process by calling the `authService.register` API.
 export const register = createAsyncThunk<AuthResponse, RegisterModel>(
-    'auth/register', // Action type prefix
-    async (credentials) => {
-        const { data } = await authService.register(credentials); // Call the register service
-        return data; // Return the response data as the payload
+    'auth/register',
+    async (registerData: RegisterModel) => {
+        const { data } = await authService.register(registerData);
+        return data;
     },
 );
-
-// Another `createAsyncThunk` for refreshing the access token.
-// This handles the token refresh process by calling the `authService.refreshToken` API.
-export const refresh = createAsyncThunk<Pick<AuthResponse, 'token' | 'expiresIn'>>(
+export const refresh = createAsyncThunk<AuthResponse, RefreshTokenModel>(
     'auth/refresh',
-    async () => {
-        const { data } = await authService.refreshToken(); // Call the refresh token service
-        return data; // Return the response data as the payload
+    async (refreshData: RefreshTokenModel) => {
+        const { data } = await authService.refreshToken(refreshData); 
+        return data;
     },
 );
 
-// Initial state for the authentication slice
 const initialState: AuthState = {
-    token: null, // No token initially
-    user: null, // No user initially
-    expiresAt: 0, // Token expiration timestamp is 0 initially
+    token: null,
+    user: null,
+    expiresAt: 0,
     isLoading: false,
     error: '',
     guestName: 'GUEST',

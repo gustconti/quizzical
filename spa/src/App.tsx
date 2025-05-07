@@ -14,7 +14,7 @@ export default function App() {
     const navigate = useNavigate();
     return (
         <>
-            <nav className="w-full flex gap-5 px-20">
+            <nav className="w-full flex items-center gap-5 px-20">
                 <Link to="/">Home</Link>
                 <Link to="/animation-test">Animation Test</Link>
                 <Link to="/signalr-test">SignalR Test</Link>

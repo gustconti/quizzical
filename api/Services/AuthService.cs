@@ -1,11 +1,14 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using api.Dtos.Auth;
 using api.Entities.Auth;
 using api.Models.Auth;
-using api.Repositories;
+using api.Options;
+using api.Repositories.Interfaces;
+using api.Services.Interfaces;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace api.Services
@@ -13,147 +16,76 @@ namespace api.Services
     public class AuthService(
         UserManager<IdentityUser> userManager,
         SignInManager<IdentityUser> signInManager,
-        IConfiguration config,
-        TokenRepository tokenRepository
+        ITokenRepository tokenRepository,
+        IJwtService jwtService,
+        IRefreshTokenService refreshTokenService,
+        IOptions<JwtOptions> options
     )
     {
         private readonly UserManager<IdentityUser> _userManager = userManager;
         private readonly SignInManager<IdentityUser> _signInManager = signInManager;
-        private readonly IConfiguration _config = config;
-        private readonly TokenRepository _tokenRepository = tokenRepository;
-
+        private readonly ITokenRepository _tokenRepository = tokenRepository;
+        private readonly IJwtService _jwtService = jwtService;
+        private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
+        private readonly JwtOptions _jwtOptions = options.Value;
         public async Task<AuthResponse> LoginAsync(LoginPayload model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email) ?? throw new InvalidOperationException("User not found.");
+            if (!user.EmailConfirmed) throw new InvalidOperationException("Email not confirmed.");
 
             var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, false);
+            if (!result.Succeeded) throw new InvalidOperationException("Invalid login attempt.");
 
-            if (!result.Succeeded)
-            {
-                throw new InvalidOperationException("Invalid login attempt.");
-            }
-
-            var claims = new[]
-            {
-            new Claim(JwtRegisteredClaimNames.Sub, model.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-
-            var key = _config["Jwt:Key"];
-            if (string.IsNullOrEmpty(key)) throw new InvalidOperationException("JWT Key is not configured.");
-
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-            var creds = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"],
-                audience: _config["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddHours(1),
-                signingCredentials: creds
-            );
-
-            var refreshToken = Guid.NewGuid().ToString();
-            var refreshTokenExpiry = DateTime.Now.AddDays(30);
-            RefreshToken refreshTokenEntity = new()
-            {
-                Token = refreshToken,
-                UserId = user.Id,
-                Expires = refreshTokenExpiry,
-                IsRevoked = false
-            };
-
-            await _tokenRepository.SaveTokenAsync(refreshTokenEntity);
+            var jwtToken = _jwtService.GenerateToken(model.Email);
+            var refreshToken = await _refreshTokenService.GenerateRefreshTokenAsync(user.Id);
 
             return new AuthResponse
             {
-                Token = new JwtSecurityTokenHandler().WriteToken(token),
-                RefreshToken = refreshToken,
+                Token = jwtToken,
+                RefreshToken = refreshToken.Token,
                 User = new User
                 {
                     Email = model.Email,
                     Id = user.Id,
                     UserName = user.UserName
                 },
-                ExpiresIn = 3600
+                ExpiresIn = _jwtOptions.ExpiresInSeconds
             };
         }
-
-        public async Task<RefreshResponse> RefreshTokenAsync(string token)
+        public async Task<RefreshResponse> RefreshTokenAsync(RefreshTokenPayload model)
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = _config["Jwt:Key"];
-            if (string.IsNullOrEmpty(key)) throw new InvalidOperationException("JWT Key is not configured.");
+            var principal = _jwtService.GetPrincipalFromToken(model.Token);
 
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-            var validationParameters = new TokenValidationParameters
+            string email = principal?.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                ?? throw new SecurityTokenException("Invalid email claim in token.");
+            IdentityUser user = await _userManager.FindByEmailAsync(email)
+                ?? throw new InvalidOperationException("User not found");
+
+            RefreshToken currentRefreshToken = await _refreshTokenService.GetAndValidateAsync(model.RefreshToken, user.Id);
+            string refreshTokenToReturn = model.RefreshToken;
+
+            bool shouldRotate = _refreshTokenService.ShouldRotate(currentRefreshToken);
+
+            if (shouldRotate)
             {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = securityKey,
-                ValidateIssuer = true,
-                ValidIssuer = _config["Jwt:Issuer"],
-                ValidateAudience = true,
-                ValidAudience = _config["Jwt:Audience"],
-                ValidateLifetime = false // We are only validating the signature here
+                await _tokenRepository.UseTokenAsync(currentRefreshToken.Token);
+                var newRefreshToken = await _refreshTokenService.GenerateRefreshTokenAsync(user.Id);
+                refreshTokenToReturn = newRefreshToken.Token;
+            }
+
+            var newJwt = _jwtService.GenerateToken(email);
+
+            return new RefreshResponse
+            {
+                Token = newJwt,
+                ExpiresIn = _jwtOptions.ExpiresInSeconds,
+                RefreshToken = refreshTokenToReturn,
             };
-
-            try
-            {
-                // Validate the incoming token
-                var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
-                if (validatedToken is not JwtSecurityToken jwtToken ||
-                    !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    throw new SecurityTokenException("Invalid token");
-                }
-
-                var email = principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? throw new SecurityTokenException("Invalid token payload");
-                var user = await _userManager.FindByEmailAsync(email) ?? throw new InvalidOperationException("User not found.");
-
-                // Check if we need to rotate the refresh token. For now, always generate it.
-                bool shouldRotateRefreshToken = true;
-                // Generate a new refresh token if rotating, else reuse the old one
-                var refreshToken = shouldRotateRefreshToken ? Guid.NewGuid().ToString() : token;
-                if (shouldRotateRefreshToken)
-                {
-                    var refreshTokenEntity = new RefreshToken
-                    {
-                        UserId = user.Id,
-                        Token = refreshToken,
-                        Expires = DateTime.Now.AddDays(30) // Set the expiry for the refresh token (e.g., 30 days)
-                    };
-                    await _tokenRepository.SaveTokenAsync(refreshTokenEntity); // Save the refresh token to the database
-                }
-
-                // Generate a new token
-                var newClaims = new[]
-                {
-                    new Claim(JwtRegisteredClaimNames.Sub, email),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-                };
-
-                var creds = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-                var newToken = new JwtSecurityToken(
-                    issuer: _config["Jwt:Issuer"],
-                    audience: _config["Jwt:Audience"],
-                    claims: newClaims,
-                    expires: DateTime.Now.AddHours(1),
-                    signingCredentials: creds
-                );
-
-                return new RefreshResponse
-                {
-                    Token = tokenHandler.WriteToken(newToken),
-                    ExpiresIn = 3600,
-                    RefreshToken = shouldRotateRefreshToken ? refreshToken : null // Include the refresh token only if it's rotated
-                };
-            }
-            catch (Exception ex)
-            {
-                throw new SecurityTokenException("Invalid token", ex);
-            }
         }
 
+        public async Task LogoutAsync()
+        {
+            await _signInManager.SignOutAsync();
+        }
     }
 }

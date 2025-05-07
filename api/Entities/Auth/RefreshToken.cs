@@ -11,9 +11,9 @@ namespace api.Entities.Auth
 
         public string Token { get; set; } = null!;
         public DateTime Expires { get; set; }
-        public bool IsRevoked { get; set; } = false;
-        public bool IsUsed { get; set; } = false;
         public string UserId { get; set; } = null!;
+        public DateTime? RevokedAt { get; set; } = null;
+        public DateTime? UsedAt { get; set; } = null;
 
         [ForeignKey("UserId")]
         public ApplicationUser User { get; set; } = null!;
