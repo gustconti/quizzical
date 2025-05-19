@@ -1,29 +1,34 @@
 using api.Dtos.Auth;
 using api.Entities.Auth;
-using api.Services;
+using api.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers
 {
-    public class AuthController(
-        UserManager<ApplicationUser> userManager,
-        AuthService authService
-    ) : ControllerBase
+    public class AuthController(UserManager<ApplicationUser> userManager, IAuthService authService) : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
-        private readonly AuthService _authService = authService;
+        private readonly IAuthService _authService = authService;
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterPayload model)
         {
-            var user = new ApplicationUser{ UserName = model.Email, Email = model.Email };
-            var result = await _userManager.CreateAsync(user, model.Password);
-            if (result.Succeeded)
+            try
             {
-                return Ok(new { Message = "User registered successfully" });
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                var result = await _userManager.CreateAsync(user, model.Password);
+                if (result.Succeeded)
+                {
+                    var loginPayload = new LoginPayload { Email = model.Email, Password = model.Password };
+                    return Ok(new { Message = "User registered successfully"});
+                }
+                return BadRequest(result.Errors);
             }
-            return BadRequest(result.Errors);
+            catch (Exception ex)
+            {
+                return BadRequest(new { ex.Message });
+            }
         }
 
         [HttpPost("login")]
@@ -31,7 +36,16 @@ namespace api.Controllers
         {
             try
             {
-                var authResponse = await _authService.LoginAsync(model);
+                AuthResponse authResponse = await _authService.LoginAsync(model);
+
+                Response.Cookies.Append("refreshToken", authResponse.RefreshToken.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = authResponse.RefreshToken.Expires
+                });
+
                 return Ok(authResponse);
             }
             catch (InvalidOperationException ex)
@@ -40,18 +54,42 @@ namespace api.Controllers
             }
         }
 
-        [HttpPost("refresh-token")]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenPayload model)
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] LogoutPayload model)
         {
             try
             {
-                RefreshResponse refreshResponse = await _authService.RefreshTokenAsync(model);
-                return Ok(refreshResponse);
+                await _authService.LogoutAsync(model);
+                return Ok(new { Message = "Logged out successfully" });
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                return BadRequest(new { ex.Message });
+                return StatusCode(500, new { ex.Message });
             }
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> Refresh()
+        {
+            var currentRefreshToken = Request.Cookies["refreshToken"];
+            if (currentRefreshToken is null)
+                return Unauthorized(new { Message = "Missing refresh token" });
+
+            var jwt = Request.Headers.Authorization.ToString().Replace("Bearer ", "");
+            var refreshResponse = await _authService.RefreshTokenAsync(jwt, currentRefreshToken);
+
+            if (refreshResponse.RotatedRefreshToken != null)
+            {
+                Response.Cookies.Append("refreshToken", refreshResponse.RotatedRefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = refreshResponse.RefreshToken.Expires
+                });
+            }
+
+            return Ok(new { token = refreshResponse.Jwt });
         }
 
         [HttpGet("confirm-email")]

@@ -7,8 +7,17 @@ using api.Hubs;
 using Microsoft.AspNetCore.Identity;
 using api.Entities.Auth;
 using api.Options;
+using api.Services;
+using api.Services.Interfaces;
+using api.Repositories.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add Identity and related services
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
 
 // Add Authorization and Authentication services
 builder.Services.AddAuthorization();
@@ -20,7 +29,6 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     var jwtKey = builder.Configuration["Jwt:Key"];
-
     if (string.IsNullOrEmpty(jwtKey))
     {
         throw new InvalidOperationException("JWT key is not configured. Please set the Jwt:Key in appsettings.json or environment variables.");
@@ -38,21 +46,26 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Connect to DB
+// Configure DB context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity services
-builder.Services
-    .AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+// Configure Services
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
-// Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// Configure Repositories
+builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 
-// Cors Policy
+// Configure Options
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<RefreshTokenOptions>(builder.Configuration.GetSection("RefreshToken"));
+
+// Add controllers
+builder.Services.AddControllers();
+
+// Configure CORS policy for React app
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -63,29 +76,23 @@ builder.Services.AddCors(options =>
     });
 });
 
-// SignalR
+// Add SignalR support
 builder.Services.AddSignalR();
 
-// Options
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-builder.Services.Configure<RefreshTokenOptions>(builder.Configuration.GetSection("RefreshToken"));
-
-// Controllers
-builder.Services.AddControllers();
-
-// Repositories
-builder.Services.AddScoped<TokenRepository>();
+// Swagger setup
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-// Middleware
-app.UseHttpsRedirection();
 
+// Middleware setup
 app.UseRouting();
-app.UseCors("AllowReactApp");
-app.UseAuthentication();  // Use JWT Bearer Authentication
+app.UseAuthentication();
 app.UseAuthorization();
+app.UseHttpsRedirection();
+app.UseCors("AllowReactApp");
 
-// Endpoints
+// Map controllers and hubs
 app.MapControllers();
 app.MapHub<QuizHub>("/quizHub");
 

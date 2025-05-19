@@ -1,13 +1,11 @@
-// Models/ApplicationUser.cs
 using Microsoft.AspNetCore.Identity;
 
 namespace api.Entities.Auth
 {
     public class ApplicationUser : IdentityUser
     {
-        // Navigation property for the refresh tokens linked to a user session
-        public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
         public ApplicationUser() { }
+
         public ApplicationUser(IdentityUser identityUser)
         {
             Id = identityUser.Id;
@@ -26,5 +24,8 @@ namespace api.Entities.Auth
             LockoutEnabled = identityUser.LockoutEnabled;
             AccessFailedCount = identityUser.AccessFailedCount;
         }
+
+        // Navigation property for the refresh tokens linked to a user session
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     }
 }
