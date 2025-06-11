@@ -7,6 +7,11 @@ import Button from './components/Button';
 import { logout } from './features/auth/store/authSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectIsLoggedIn } from './features/auth/utils/authUtils';
+import Counter from './features/examples/Counter';
+import { NameLengthBad } from './features/examples/DerivedState';
+import { MouseTracker } from './features/examples/MouseTracker';
+import { Child } from './features/examples/propsDemo';
+
 
 export default function App() {
     const dispatch = useDispatch();
@@ -20,8 +25,12 @@ export default function App() {
                 <Link to="/signalr-test">SignalR Test</Link>
                 <Button label={isLoggedIn ? 'logout' : 'login'} onClick={isLoggedIn ? () => dispatch(logout()) : () => navigate('/login')} />
             </nav>
+            <Counter />
+            <NameLengthBad />
+            <MouseTracker />
+            <Child value={12} />
             <Routes>
-                <Route path="/animation-tesdt" element={<AnimationTest />} />
+                <Route path="/animation-test" element={<AnimationTest />} />
                 <Route path="/signalr-test" element={<QuizRoom />} />
                 <Route path="/*" element={<AuthRoutes />} />
             </Routes>
